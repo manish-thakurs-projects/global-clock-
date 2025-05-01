@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Clock</title>
+    <style>
+        
+        :root {
+            --red: #fbff00e8;
+            --dark: #0a0a0a;
+            --black: #000000;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: var(--black);
+            color: white;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--red);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(255,0,0,0.5);
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 1rem;
+            background: var(--dark);
+            border: 1px solid var(--red);
+            color: white;
+            margin-bottom: 2rem;
+            border-radius: 5px;
+        }
+
+        .clocks-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .clock-card {
+            background: var(--dark);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid var(--red);
+            box-shadow: 0 0 15px rgba(255,0,0,0.2);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .clock-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .timezone {
+            color: var(--red);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .time {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .date {
+            color: #666;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--dark);
+            padding: 3rem;
+            border-radius: 20px;
+            border: 2px solid var(--red);
+            text-align: center;
+            width: 90%;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 196, 0, 0.3);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--red);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-time {
+            font-size: 7rem;
+            margin: 2rem 0;
+            color: var(--red);
+        }
+
+        .modal-date {
+            font-size: 1.5rem;
+            color: #888;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .clocks-container {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-time {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <input type="text" class="search-box" placeholder="Search timezone...">
+        <div class="clocks-container"></div>
+    </div>
+
+    <div class="modal">
+        <div class="modal-content">
+            <button class="modal-close">✕</button>
+            <div class="modal-timezone"></div>
+            <div class="modal-time"></div>
+            <div class="modal-date"></div>
+        </div>
+    </div>
+
+    <script>
+        const clocksContainer = document.querySelector('.clocks-container');
+        const searchBox = document.querySelector('.search-box');
+        const modal = document.querySelector('.modal');
+        const modalClose = document.querySelector('.modal-close');
+        let currentModalTimezone = null;
+
+        function getAllTimeZones() {
+            return Intl.supportedValuesOf('timeZone');
+        }
+
+        function createClockCard(timeZone) {
+            const card = document.createElement('div');
+            card.className = 'clock-card';
+            card.dataset.timezone = timeZone;
+            card.innerHTML = `
+                <div class="timezone">${timeZone.replace(/_/g, ' ')}</div>
+                <div class="time"></div>
+                <div class="date"></div>
+            `;
+            card.addEventListener('click', () => showModal(timeZone));
+            return card;
+        }
+
+        function updateClock(card) {
+            const tz = card.dataset.timezone;
+            const options = {
+                timeZone: tz,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            
+            const dateOptions = {
+                timeZone: tz,
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+
+            const time = new Date().toLocaleTimeString('en-US', options);
+            const date = new Date().toLocaleDateString('en-US', dateOptions);
+            
+            card.querySelector('.time').textContent = time;
+            card.querySelector('.date').textContent = date;
+        }
+
+        function showModal(timeZone) {
+            currentModalTimezone = timeZone;
+            modal.classList.add('show');
+            updateModalTime();
+        }
+
+        function updateModalTime() {
+            if (!modal.classList.contains('show')) return;
+
+            const options = {
+                timeZone: currentModalTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            
+            const dateOptions = {
+                timeZone: currentModalTimezone,
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+
+            const time = new Date().toLocaleTimeString('en-US', options);
+            const date = new Date().toLocaleDateString('en-US', dateOptions);
+            
+            modal.querySelector('.modal-timezone').textContent = 
+                currentModalTimezone.replace(/_/g, ' ');
+            modal.querySelector('.modal-time').textContent = time;
+            modal.querySelector('.modal-date').textContent = date;
+
+            setTimeout(updateModalTime, 1000);
+        }
+
+        function updateClocks() {
+            const cards = clocksContainer.querySelectorAll('.clock-card');
+            cards.forEach(card => updateClock(card));
+        }
+
+        function filterTimeZones(searchText) {
+            const filtered = getAllTimeZones().filter(tz => 
+                tz.toLowerCase().includes(searchText.toLowerCase())
+            );
+            clocksContainer.innerHTML = '';
+            filtered.forEach(tz => clocksContainer.appendChild(createClockCard(tz)));
+            updateClocks();
+        }
+
+        function closeModal() {
+            modal.classList.remove('show');
+            currentModalTimezone = null;
+        }
+
+        modalClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        function init() {
+            const timeZones = getAllTimeZones();
+            timeZones.forEach(tz => clocksContainer.appendChild(createClockCard(tz)));
+            setInterval(updateClocks, 1000);
+            
+            searchBox.addEventListener('input', (e) => {
+                filterTimeZones(e.target.value);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
